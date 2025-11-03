@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 import tempfile
@@ -26,10 +27,13 @@ from . import serializers, services, utils
 from .apps import ToolsConfig
 from .resources import ItemResource, ServiceResource
 from .services import return_upload_result_json
+from .user_import_service import UserImportService
 
 logger = logging.getLogger(__name__)
 
 
+import base64
+from .serializers import FileSerializer
 
 
 @api_view(["GET"])
@@ -707,3 +711,76 @@ def process_import_items_services(resource: ModelResource, dataset: Dataset):
 
     logger.info("End of import process")
     return return_upload_result_json(success=success, other_types_result=result, other_types_errors=errors)
+
+def download_user_template(request):
+    """
+    Retourne un modèle CSV pour l’import d’utilisateurs
+    """
+    template = (
+        "code,username,email,first_name,last_name,password,phone_number,language,roles,regions,districts,municipalities\n"
+        "123,admin,admin@example.com,Admin,System,Admin123!,22377000000,fr,ADMIN,Kayes;Mopti,Kayes Cercle;Youwarou,Youwarou\n"
+        "234,moussa,moussa@example.com,Moussa,Traore,Moussa@123,22376000000,en,OFFICER,Segou,Segou Cercle,Segou\n"
+        "345,fatou,fatou@example.com,Fatou,Diallo,Fatou@123,22378000000,fr,USER,Gao;Kidal,Kidal\n"
+    )
+    response = HttpResponse(template, content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="user_import_template.csv"'
+    return response
+
+@api_view(["POST"])
+@permission_classes(
+    [
+        checkUserWithRights(
+            ToolsConfig.registers_locations_perms,
+        )
+    ]
+)
+def upload_users(request):
+    """
+    Upload d'un fichier CSV d'utilisateurs (création/mise à jour interactive)
+    avec stratégie d'import (INSERT, UPDATE, INSERT_UPDATE, INSERT_UPDATE_DELETE).
+    """
+    file = request.FILES.get("file")
+    dry_run = request.data.get("dry_run", "false").lower() == "true"
+    strategy = request.data.get("strategy", "INSERT_UPDATE").upper()
+
+    if not file:
+        return Response({"success": False, "error": "Aucun fichier fourni."}, status=400)
+
+    try:
+        logger.info(f"Import utilisateurs démarré (dry_run={dry_run}, strategy={strategy})")
+
+        # Appel du service
+        report = UserImportService.import_users(
+            file=file,
+            dry_run=dry_run,
+            delimiter=",",
+            user=request.user,
+            strategy=strategy,
+        )
+
+        logger.info(f"Import utilisateurs terminé : {report}")
+
+        # Conversion pour return_upload_result_json
+        class Result:
+            total_rows = report.get("sent", 0)
+            totals = {
+                "new": report.get("created", 0),
+                "update": report.get("updated", 0),
+                "delete": report.get("deleted", 0),
+                "skip": report.get("skipped", 0),
+                "invalid": len(report.get("errors", [])),
+                "error": len(report.get("errors", [])),
+            }
+
+        return return_upload_result_json(
+            success=report.get("success", False),
+            other_types_result=Result(),
+            other_types_errors=report.get("errors", []),
+        )
+
+    except Exception as exc:
+        logger.exception("Erreur lors de l'import des utilisateurs : %s", exc)
+        return Response(
+            {"success": False, "error": str(exc), "errors": [str(exc)]},
+            status=500,
+        )

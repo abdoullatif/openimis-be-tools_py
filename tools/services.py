@@ -31,7 +31,7 @@ from insuree.models import Family, Insuree, InsureePolicy
 from medical.models import Diagnosis, Item, Service, ItemOrService
 from location.models import Location, HealthFacility, LocationManager, UserDistrict
 from medical_pricelist.models import ServicesPricelist, ItemsPricelist
-from core.models.user import ClaimAdmin
+from core.models.user import ClaimAdmin, InteractiveUser
 from claim.models import Claim, Feedback, FeedbackPrompt
 from policy.models import Policy
 from policy.services import update_insuree_policies
@@ -46,6 +46,15 @@ import zipfile
 import sqlite3
 import os
 from xml.etree import ElementTree
+
+import csv
+import io
+from django.db import transaction
+from django.contrib.auth import get_user_model
+from core.models import UserRole, Role
+from location.models import Location, UserDistrict
+
+User = get_user_model()
 
 
 logger = logging.getLogger(__name__)

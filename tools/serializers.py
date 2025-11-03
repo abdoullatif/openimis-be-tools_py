@@ -28,7 +28,6 @@ class UploadSerializer(FileSerializer):
         required=True,
     )
 
-
 class DeletableUploadSerializer(UploadSerializer):
     strategy = serializers.ChoiceField(
         choices=(

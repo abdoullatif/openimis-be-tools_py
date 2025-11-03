@@ -10,6 +10,8 @@ urlpatterns = [
     path("registers/download_healthfacilities", views.download_health_facilities),
     path("registers/upload_healthfacilities", views.upload_health_facilities),
     path("registers/download_diagnoses", views.download_diagnoses),
+    path("registers/user_template", views.download_user_template),
+    path("imports/user_import", views.upload_users),
     path("registers/upload_diagnoses", views.upload_diagnoses),
     path("registers/download_items", views.download_items),
     path("registers/upload_items", views.upload_items),
