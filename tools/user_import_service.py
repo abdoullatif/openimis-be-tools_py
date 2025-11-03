@@ -106,8 +106,10 @@ class UserImportService:
                             if d.strip()
                         ]
                         district_ids = list(
-                            Location.objects.filter(name__in=district_names, type="D")
+                            Location.objects
+                            .filter(name__in=district_names, type="D")
                             .values_list("id", flat=True)
+                            .distinct()
                         )
                         data["districts"] = district_ids
 
@@ -118,8 +120,10 @@ class UserImportService:
                             if d.strip()
                         ]
                         municipality_ids = list(
-                            Location.objects.filter(name__in=municipality_names, type="W")
+                            Location.objects
+                            .filter(name__in=municipality_names, type="W")
                             .values_list("id", flat=True)
+                            .distinct()
                         )
                         data["municipalities"] = municipality_ids
 
